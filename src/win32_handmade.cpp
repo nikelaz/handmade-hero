@@ -29,19 +29,13 @@ RenderWierdGradient(int XOffset, int YOffset)
 
     for (int Y = 0; Y < BitmapHeight; Y += 1)
     {
-        U8 *Pixel = (U8*)Row;
+        U32 *Pixel = (U32*)Row;
         for (int X = 0; X < BitmapWidth; X += 1)
         { 
-            *Pixel = (U8)(X + XOffset);
-            Pixel += 1; 
+            U8 Blue = (U8)(X + XOffset);
+            U8 Green = (U8)(Y + YOffset);
             
-            *Pixel = (U8)(Y + YOffset);
-            Pixel += 1; 
-
-            *Pixel = 0;
-            Pixel += 1; 
-
-            Pixel += 1; 
+            *Pixel++ = ((Green << 8) | Blue); 
         }
         Row += Pitch;
     }
