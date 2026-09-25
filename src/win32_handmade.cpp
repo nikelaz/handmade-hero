@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 struct win32_offscreen_buffer
 {
@@ -111,10 +112,6 @@ MainWindowCallback(
 
     switch(Message)
     {
-        case WM_SIZE:
-        {
-        } break;
-
         case WM_CLOSE:
         {
             // @TODO: Handle this with a message to the user?
@@ -143,6 +140,75 @@ MainWindowCallback(
 
             Win32DisplayBufferInWindow(DeviceContext, GlobalBackbuffer, X, Y, Width, Height); 
             EndPaint(Window, &Paint);
+        } break;
+
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        {
+           uint32_t VKCode = WParam;
+           bool WasDown = (LParam & (1 << 30)) != 0;
+           bool IsDown = (LParam & (1 << 31)) == 0;
+
+           if (WasDown != IsDown) {
+               if (VKCode == 'W')
+               {
+                   OutputDebugStringA("W\n");
+               } 
+               else if (VKCode == 'A')
+               {
+                   OutputDebugStringA("A\n");
+               }
+               else if (VKCode == 'S')
+               {
+                   OutputDebugStringA("S\n");
+               }
+               else if (VKCode == 'D')
+               {
+                   OutputDebugStringA("D\n");
+               } 
+               else if (VKCode == 'Q')
+               {
+                   OutputDebugStringA("Q\n");
+               }
+               else if (VKCode == 'E')
+               {
+                   OutputDebugStringA("E\n");
+               }
+               else if (VKCode == VK_ESCAPE)
+               {
+                   if (IsDown)
+                   {
+                       OutputDebugStringA("Escape Is Down\n");
+                   }
+                   
+                   if (WasDown)
+                   {
+                       OutputDebugStringA("Escape Was Down\n");
+                   }
+               }
+               else if (VKCode == VK_SPACE)
+               {
+                   OutputDebugStringA("Space\n");
+               }
+               else if (VKCode == VK_UP)
+               {
+                   OutputDebugStringA("Up\n");
+               }
+               else if (VKCode == VK_DOWN)
+               {
+                   OutputDebugStringA("Down\n");
+               }
+               else if (VKCode == VK_LEFT)
+               {
+                   OutputDebugStringA("Left\n");
+               }
+               else if (VKCode == VK_RIGHT)
+               {
+                   OutputDebugStringA("Right\n");
+               }
+           }
         } break;
 
         default:
@@ -206,6 +272,41 @@ int CALLBACK WinMain(
 
                     TranslateMessage(&Message);
                     DispatchMessage(&Message);
+                }
+
+                // @TODO: Should we poll more frequently?
+                for (DWORD ControllerIndex = 0;
+                    ControllerIndex < XUSER_MAX_COUNT;
+                    ControllerIndex += 1
+                )
+                {
+                    XINPUT_STATE ControllerState;
+                    if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+                    {
+                        XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
+                        bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+                        bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+                        bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+                        bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+
+                        bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+                        bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+
+                        bool LeftShoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+                        bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+
+                        bool AButton = (Pad->wButtons & XINPUT_GAMEPAD_A);
+                        bool BButton = (Pad->wButtons & XINPUT_GAMEPAD_B);
+                        bool XButton = (Pad->wButtons & XINPUT_GAMEPAD_X);
+                        bool YButton = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+
+                        int16_t StickX = Pad->sThumbLX;
+                        int16_t StickY = Pad->sThumbLY;
+                    }
+                    else
+                    {
+                        // Controller not found
+                    }
                 }
 
                 RenderWierdGradient(GlobalBackbuffer, XOffset, YOffset);
