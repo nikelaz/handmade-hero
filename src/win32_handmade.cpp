@@ -34,21 +34,21 @@ win32_window_dimensions GetWindowDimension(HWND Window)
 }
 
 static void
-RenderWierdGradient(win32_offscreen_buffer Buffer, int XOffset, int YOffset)
+RenderWierdGradient(win32_offscreen_buffer *Buffer, int XOffset, int YOffset)
 {
-    uint8_t *Row = (uint8_t*)Buffer.Memory;
+    uint8_t *Row = (uint8_t*)Buffer->Memory;
 
-    for (int Y = 0; Y < Buffer.Height; Y += 1)
+    for (int Y = 0; Y < Buffer->Height; Y += 1)
     {
         uint32_t *Pixel = (uint32_t*)Row;
-        for (int X = 0; X < Buffer.Width; X += 1)
+        for (int X = 0; X < Buffer->Width; X += 1)
         { 
             uint8_t Blue = (uint8_t)(X + XOffset);
             uint8_t Green = (uint8_t)(Y + YOffset);
             
             *Pixel++ = ((Green << 8) | Blue); 
         }
-        Row += Buffer.Pitch;
+        Row += Buffer->Pitch;
     }
 }
 
@@ -75,26 +75,20 @@ Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
     Buffer->Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
     Buffer->Pitch = Buffer->Width * Buffer->BytesPerPixel;
 
-    RenderWierdGradient(GlobalBackbuffer, 0, 0);
+    RenderWierdGradient(&GlobalBackbuffer, 0, 0);
 }
 
 static void
-Win32DisplayBufferInWindow(
-    HDC DeviceContext,
-    win32_offscreen_buffer Buffer,
-    int X,
-    int Y,
-    int Width,
-    int Height
-)
+Win32DisplayBufferInWindow(HDC DeviceContext, win32_offscreen_buffer *Buffer,
+    int X, int Y, int Width, int Height)
 {
     // @TODO: Aspect ratio correction
     StretchDIBits(
         DeviceContext,
         0, 0, Width, Height,
-        0, 0, Buffer.Width, Buffer.Height,
-        Buffer.Memory,
-        &Buffer.Info,
+        0, 0, Buffer->Width, Buffer->Height,
+        Buffer->Memory,
+        &Buffer->Info,
         DIB_RGB_COLORS,
         SRCCOPY 
     );
@@ -138,7 +132,7 @@ MainWindowCallback(
             int Width = Paint.rcPaint.right - Paint.rcPaint.left;
             int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
 
-            Win32DisplayBufferInWindow(DeviceContext, GlobalBackbuffer, X, Y, Width, Height); 
+            Win32DisplayBufferInWindow(DeviceContext, &GlobalBackbuffer, X, Y, Width, Height); 
             EndPaint(Window, &Paint);
         } break;
 
@@ -309,14 +303,14 @@ int CALLBACK WinMain(
                     }
                 }
 
-                RenderWierdGradient(GlobalBackbuffer, XOffset, YOffset);
+                RenderWierdGradient(&GlobalBackbuffer, XOffset, YOffset);
 
                 HDC DeviceContext = GetDC(Window);
                 win32_window_dimensions WindowDimensions = GetWindowDimension(Window);
 
                 Win32DisplayBufferInWindow(
                     DeviceContext,
-                    GlobalBackbuffer,
+                    &GlobalBackbuffer,
                     0,
                     0,
                     WindowDimensions.Width,
