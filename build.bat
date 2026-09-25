@@ -2,5 +2,5 @@
 
 mkdir .\build
 pushd .\build
-cl -Zi ..\src\win32_handmade.cpp User32.lib Gdi32.lib XInput.lib
+cl -Zi ..\src\win32_handmade.cpp user32.lib gdi32.lib xinput.lib xaudio2.lib 
 popd

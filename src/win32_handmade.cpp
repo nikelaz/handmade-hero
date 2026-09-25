@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <xaudio2.h>
 
 struct win32_offscreen_buffer
 {
@@ -14,8 +15,35 @@ struct win32_offscreen_buffer
     int BytesPerPixel;
 };
 
+#define AUDIO_BUFFER_COUNT 3
+#define AUDIO_FRAMES_PER_BUFFER 960
+
+struct win32_audio_buffer
+{
+    int16_t Samples[AUDIO_FRAMES_PER_BUFFER * 2];
+};
+
+static win32_audio_buffer AudioBuffers[AUDIO_BUFFER_COUNT];
+static int CurrentAudioBuffer;
+
+struct win32_sound_output_buffer
+{
+    int SamplesPerSecond;
+    int SampleCount;
+    int16_t *Samples;
+};
+
+struct win32_xaudio_state
+{
+    IXAudio2 *XAudio;
+    IXAudio2MasteringVoice *MasterVoice;
+    IXAudio2SourceVoice *SourceVoice;
+};
+
 static bool GlobalRunning;
 static win32_offscreen_buffer GlobalBackbuffer;
+static win32_sound_output_buffer GlobalSoundOutputBuffer;
+static win32_xaudio_state GlobalXAudio;
 
 struct win32_window_dimensions
 {
@@ -92,6 +120,57 @@ Win32DisplayBufferInWindow(HDC DeviceContext, win32_offscreen_buffer *Buffer,
         DIB_RGB_COLORS,
         SRCCOPY 
     );
+}
+
+static void
+Win32InitXAudio()
+{
+    XAudio2Create(&GlobalXAudio.XAudio);
+
+    GlobalXAudio.XAudio->CreateMasteringVoice(
+        &GlobalXAudio.MasterVoice);
+
+    WAVEFORMATEX Format = {};
+    Format.wFormatTag = WAVE_FORMAT_PCM;
+    Format.nChannels = 2;
+    Format.nSamplesPerSec = 48000;
+    Format.wBitsPerSample = 16;
+    Format.nBlockAlign =
+        Format.nChannels * Format.wBitsPerSample / 8;
+    Format.nAvgBytesPerSec =
+        Format.nSamplesPerSec * Format.nBlockAlign;
+
+    GlobalXAudio.XAudio->CreateSourceVoice(
+        &GlobalXAudio.SourceVoice,
+        &Format);
+
+    GlobalXAudio.SourceVoice->Start();
+}
+
+static void
+Win32PushSound()
+{
+    win32_audio_buffer *AudioBuffer = &AudioBuffers[CurrentAudioBuffer];
+
+    int16_t *SampleOut = AudioBuffer->Samples;
+
+    for (int SampleIndex = 0;
+         SampleIndex < AUDIO_FRAMES_PER_BUFFER;
+         ++SampleIndex)
+    {
+        int16_t SampleValue = 0;
+
+        *SampleOut++ = SampleValue; 
+        *SampleOut++ = SampleValue;
+    }
+
+    XAUDIO2_BUFFER Buffer = {};
+    Buffer.AudioBytes = sizeof(AudioBuffer->Samples);
+    Buffer.pAudioData = (BYTE *)AudioBuffer->Samples;
+
+    GlobalXAudio.SourceVoice->SubmitSourceBuffer(&Buffer);
+
+    CurrentAudioBuffer = (CurrentAudioBuffer + 1) % AUDIO_BUFFER_COUNT;
 }
 
 LRESULT CALLBACK
@@ -255,6 +334,8 @@ int CALLBACK WinMain(
         if (Window)
         {
             GlobalRunning = true;
+
+            Win32InitXAudio();
 
             int XOffset = 0;
             int YOffset = 0;
