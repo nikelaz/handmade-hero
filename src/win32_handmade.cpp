@@ -203,6 +203,12 @@ MainWindowCallback(
                    OutputDebugStringA("Right\n");
                }
            }
+
+           bool AltKeyWasDown = (LParam & (1 << 29)) != 0;
+           if ((VKCode == VK_F4) && AltKeyWasDown)
+           {
+               GlobalRunning = false;
+           }
         } break;
 
         default:
